@@ -46,7 +46,7 @@ export const Route = createFileRoute("/recipes/$id")({
 });
 
 function RecipeDetails() {
-  const { recipe } = Route.useLoaderData();
+  const { recipe } = Route.useLoaderData() as { recipe: Recipe };
   const related = recipes.filter((r) => r.id !== recipe.id).slice(0, 3);
 
   return (
