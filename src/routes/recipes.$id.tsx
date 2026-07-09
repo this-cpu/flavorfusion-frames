@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { SiteLayout } from "@/components/Layouts";
+import type { Recipe } from "@/lib/dummy-data";
 import { recipes } from "@/lib/dummy-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
