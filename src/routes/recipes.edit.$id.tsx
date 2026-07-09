@@ -12,7 +12,7 @@ export const Route = createFileRoute("/recipes/edit/$id")({
 });
 
 function EditRecipe() {
-  const { recipe } = Route.useLoaderData();
+  const { recipe } = Route.useLoaderData() as { recipe: import("@/lib/dummy-data").Recipe };
   return (
     <RecipeForm
       mode="edit"
