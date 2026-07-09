@@ -38,7 +38,7 @@ export const Route = createFileRoute("/recipes/$id")({
       </div>
     </SiteLayout>
   ),
-  loader: ({ params }) => {
+  loader: ({ params }): { recipe: Recipe } => {
     const recipe = recipes.find((r) => r.id === params.id);
     if (!recipe) throw notFound();
     return { recipe };
