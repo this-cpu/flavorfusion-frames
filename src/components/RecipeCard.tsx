@@ -1,64 +1,52 @@
 import { Link } from "@tanstack/react-router";
-import { Clock, Flame, Heart, Star } from "lucide-react";
-import type { Recipe } from "@/lib/dummy-data";
+import { Clock, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { DbRecipe } from "@/lib/types";
+import { PLACEHOLDER_IMG, totalTime } from "@/lib/types";
 
-export function RecipeCard({ recipe }: { recipe: Recipe }) {
+export type RecipeCardData = Pick<
+  DbRecipe,
+  "id" | "title" | "description" | "image_url" | "difficulty" | "prep_time_min" | "cook_time_min"
+> & {
+  like_count?: number;
+  category_name?: string | null;
+  author_name?: string | null;
+};
+
+export function RecipeCard({ recipe }: { recipe: RecipeCardData }) {
   return (
     <Link
       to="/recipes/$id"
       params={{ id: recipe.id }}
-      className="group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-warm"
+      className="group overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-warm"
     >
       <div className="relative aspect-[4/3] overflow-hidden">
         <img
-          src={recipe.image}
+          src={recipe.image_url || PLACEHOLDER_IMG}
           alt={recipe.title}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/60 to-transparent" />
-        <div className="absolute left-3 top-3">
-          <Badge className="glass border-0 text-foreground">
-            {recipe.category}
-          </Badge>
-        </div>
-        <button
-          type="button"
-          onClick={(e) => e.preventDefault()}
-          aria-label="Save recipe"
-          className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full glass text-foreground transition-colors hover:text-primary"
-        >
-          <Heart className="h-4 w-4" />
-        </button>
-        <div className="absolute inset-x-3 bottom-3 flex items-center justify-between text-xs text-white">
-          <span className="inline-flex items-center gap-1">
-            <Star className="h-3.5 w-3.5 fill-current" /> {recipe.rating}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Clock className="h-3.5 w-3.5" /> {recipe.time}
-          </span>
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="font-display text-lg font-semibold leading-tight">
-          {recipe.title}
-        </h3>
-        <p className="line-clamp-2 text-sm text-muted-foreground">
-          {recipe.description}
-        </p>
-        <div className="mt-auto flex items-center justify-between pt-2">
-          <div className="flex items-center gap-2">
-            <img
-              src={recipe.authorAvatar}
-              alt={recipe.author}
-              className="h-6 w-6 rounded-full object-cover"
-            />
-            <span className="text-xs text-muted-foreground">{recipe.author}</span>
+        {recipe.category_name && (
+          <Badge className="absolute left-3 top-3 rounded-full">{recipe.category_name}</Badge>
+        )}
+        {typeof recipe.like_count === "number" && (
+          <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 text-xs text-white backdrop-blur">
+            <Heart className="h-3 w-3 fill-current" />
+            {recipe.like_count}
           </div>
-          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <Flame className="h-3.5 w-3.5" /> {recipe.calories} kcal
+        )}
+      </div>
+      <div className="p-4">
+        <h3 className="line-clamp-1 font-display text-lg font-semibold">{recipe.title}</h3>
+        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+          {recipe.description ?? "A delicious recipe from our community."}
+        </p>
+        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            <Clock className="h-3 w-3" /> {totalTime(recipe)}
           </span>
+          <span>{recipe.difficulty ?? "Easy"}</span>
         </div>
       </div>
     </Link>
@@ -68,15 +56,11 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
 export function RecipeCardSkeleton() {
   return (
     <div className="overflow-hidden rounded-2xl border bg-card">
-      <div className="aspect-[4/3] animate-pulse bg-muted" />
-      <div className="space-y-3 p-4">
-        <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
-        <div className="h-3 w-full animate-pulse rounded bg-muted" />
-        <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
-        <div className="flex items-center justify-between pt-2">
-          <div className="h-6 w-24 animate-pulse rounded-full bg-muted" />
-          <div className="h-3 w-12 animate-pulse rounded bg-muted" />
-        </div>
+      <Skeleton className="aspect-[4/3] w-full" />
+      <div className="p-4 space-y-2">
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-1/2" />
       </div>
     </div>
   );

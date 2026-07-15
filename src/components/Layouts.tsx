@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Navbar } from "./Navbar";
 import { Footer } from "./Footer";
+import { Sidebar } from "./Sidebar";
 
 export function SiteLayout({ children }: { children: ReactNode }) {
   return (
@@ -24,5 +25,3 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-import { Sidebar } from "./Sidebar";

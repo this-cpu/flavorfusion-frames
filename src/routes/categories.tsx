@@ -1,14 +1,37 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { SiteLayout } from "@/components/Layouts";
-import { categories, recipes } from "@/lib/dummy-data";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { PLACEHOLDER_IMG } from "@/lib/types";
 
 export const Route = createFileRoute("/categories")({
   component: Categories,
 });
 
 function Categories() {
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["categories-with-counts"],
+    queryFn: async () => {
+      const [{ data: cats }, { data: recipes }] = await Promise.all([
+        supabase.from("categories").select("*").order("id"),
+        supabase.from("recipes").select("category_id, image_url").eq("is_published", true),
+      ]);
+      const counts = new Map<number, number>();
+      const covers = new Map<number, string>();
+      (recipes ?? []).forEach((r) => {
+        if (r.category_id) {
+          counts.set(r.category_id, (counts.get(r.category_id) ?? 0) + 1);
+          if (r.image_url && !covers.has(r.category_id)) covers.set(r.category_id, r.image_url);
+        }
+      });
+      return (cats ?? []).map((c) => ({
+        ...c,
+        count: counts.get(c.id) ?? 0,
+        cover: covers.get(c.id) ?? PLACEHOLDER_IMG,
+      }));
+    },
+  });
+
   return (
     <SiteLayout>
       <section className="border-b bg-muted/30">
@@ -17,26 +40,24 @@ function Categories() {
           <p className="mt-2 max-w-xl text-muted-foreground">
             Explore recipes by cuisine, meal, and mood.
           </p>
-          <div className="relative mt-6 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search categories..." className="h-11 pl-10" />
-          </div>
         </div>
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {categories.map((c, i) => {
-            const cover = recipes[i % recipes.length].image;
-            return (
+        {isLoading ? (
+          <p className="text-muted-foreground">Loading…</p>
+        ) : (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {data.map((c) => (
               <Link
-                key={c.name}
+                key={c.id}
                 to="/recipes"
+                search={{ category: c.slug }}
                 className="group relative overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-warm"
               >
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img
-                    src={cover}
+                    src={c.cover}
                     alt={c.name}
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
@@ -50,9 +71,9 @@ function Categories() {
                   </div>
                 </div>
               </Link>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
     </SiteLayout>
   );
