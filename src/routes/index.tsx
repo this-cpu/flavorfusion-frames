@@ -1,22 +1,53 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChefHat, Sparkles, Timer, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteLayout } from "@/components/Layouts";
-import { RecipeCard } from "@/components/RecipeCard";
-import { categories, recipes } from "@/lib/dummy-data";
+import { RecipeCard, RecipeCardSkeleton } from "@/components/RecipeCard";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { PLACEHOLDER_IMG } from "@/lib/types";
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
 
+function useHomeData() {
+  return useQuery({
+    queryKey: ["home"],
+    queryFn: async () => {
+      const [recipesRes, categoriesRes, likesRes] = await Promise.all([
+        supabase
+          .from("recipes")
+          .select("id, title, description, image_url, difficulty, prep_time_min, cook_time_min, category_id, created_at, categories(name)")
+          .eq("is_published", true)
+          .order("created_at", { ascending: false })
+          .limit(6),
+        supabase.from("categories").select("*").order("id"),
+        supabase.from("likes").select("recipe_id"),
+      ]);
+      const likeCounts = new Map<string, number>();
+      (likesRes.data ?? []).forEach((l: any) => {
+        likeCounts.set(l.recipe_id, (likeCounts.get(l.recipe_id) ?? 0) + 1);
+      });
+      const recipes = (recipesRes.data ?? []).map((r: any) => ({
+        ...r,
+        category_name: r.categories?.name ?? null,
+        like_count: likeCounts.get(r.id) ?? 0,
+      }));
+      return { recipes, categories: categoriesRes.data ?? [] };
+    },
+  });
+}
+
 function Home() {
-  const featured = recipes.slice(0, 6);
+  const { data, isLoading } = useHomeData();
+  const recipes = data?.recipes ?? [];
+  const categories = data?.categories ?? [];
   const hero = recipes[0];
 
   return (
     <SiteLayout>
-      {/* Hero */}
       <section className="bg-hero relative overflow-hidden">
         <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 md:grid-cols-2 md:py-24">
           <div className="flex flex-col justify-center">
@@ -27,8 +58,8 @@ function Home() {
               Cook something <span className="text-gradient">worth savoring</span>.
             </h1>
             <p className="mt-5 max-w-lg text-lg text-muted-foreground">
-              Saveur is an interactive recipe book that helps you discover,
-              organize, and share beautiful recipes with a community of home cooks.
+              Saveur is an interactive recipe book — discover, save, and share
+              beautiful recipes with a real community of home cooks and chefs.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link to="/recipes">
@@ -42,36 +73,22 @@ function Home() {
                 </Button>
               </Link>
             </div>
-            <dl className="mt-10 grid grid-cols-3 gap-6 border-t pt-6">
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Recipes</dt>
-                <dd className="font-display text-2xl font-semibold">1.2k+</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Cooks</dt>
-                <dd className="font-display text-2xl font-semibold">8.4k</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wide text-muted-foreground">Categories</dt>
-                <dd className="font-display text-2xl font-semibold">32</dd>
-              </div>
-            </dl>
           </div>
 
           <div className="relative">
             <div className="absolute -right-8 -top-8 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
             <div className="glass-strong relative overflow-hidden rounded-3xl shadow-warm">
               <img
-                src={hero.image}
-                alt={hero.title}
+                src={hero?.image_url || PLACEHOLDER_IMG}
+                alt={hero?.title ?? "Featured recipe"}
                 className="aspect-[4/5] w-full object-cover"
               />
               <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent p-6 text-white">
-                <Badge className="mb-2 border-0 bg-white/20 text-white">
-                  Chef's pick
-                </Badge>
-                <h3 className="font-display text-2xl">{hero.title}</h3>
-                <p className="mt-1 text-sm opacity-90">{hero.description}</p>
+                <Badge className="mb-2 border-0 bg-white/20 text-white">Chef's pick</Badge>
+                <h3 className="font-display text-2xl">{hero?.title ?? "Discover recipes"}</h3>
+                <p className="mt-1 text-sm opacity-90">
+                  {hero?.description ?? "Sign up and add the first recipe to our community."}
+                </p>
               </div>
             </div>
             <div className="glass absolute -bottom-6 -left-6 hidden rounded-2xl px-4 py-3 shadow-soft sm:block">
@@ -80,8 +97,8 @@ function Home() {
                   <Timer className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Avg prep time</p>
-                  <p className="font-display text-lg font-semibold">28 min</p>
+                  <p className="text-xs text-muted-foreground">Community</p>
+                  <p className="font-display text-lg font-semibold">{recipes.length} fresh recipes</p>
                 </div>
               </div>
             </div>
@@ -89,7 +106,6 @@ function Home() {
         </div>
       </section>
 
-      {/* Categories strip */}
       <section className="mx-auto max-w-7xl px-4 pt-8 sm:px-6">
         <div className="flex items-end justify-between">
           <div>
@@ -103,38 +119,45 @@ function Home() {
         <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
           {categories.slice(0, 6).map((c) => (
             <Link
-              key={c.name}
-              to="/categories"
+              key={c.id}
+              to="/recipes"
+              search={{ category: c.slug } as never}
               className="group flex flex-col items-center rounded-2xl border bg-card p-4 text-center transition-all hover:-translate-y-0.5 hover:shadow-warm"
             >
               <span className="text-3xl transition-transform group-hover:scale-110">{c.emoji}</span>
               <span className="mt-2 text-sm font-medium">{c.name}</span>
-              <span className="text-xs text-muted-foreground">{c.count} recipes</span>
             </Link>
           ))}
         </div>
       </section>
 
-      {/* Featured */}
       <section className="mx-auto max-w-7xl px-4 pt-16 sm:px-6">
         <div className="flex items-end justify-between">
           <div>
-            <h2 className="font-display text-3xl font-semibold">Trending this week</h2>
-            <p className="mt-1 text-muted-foreground">Loved by our community.</p>
+            <h2 className="font-display text-3xl font-semibold">Latest recipes</h2>
+            <p className="mt-1 text-muted-foreground">Fresh from the community.</p>
           </div>
           <Link to="/recipes" className="text-sm font-medium text-primary hover:underline">
-            View all recipes
+            View all
           </Link>
         </div>
         <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((r) => (
-            <RecipeCard key={r.id} recipe={r} />
-          ))}
+          {isLoading
+            ? Array.from({ length: 3 }).map((_, i) => <RecipeCardSkeleton key={i} />)
+            : recipes.length === 0
+              ? (
+                <div className="col-span-full rounded-2xl border border-dashed p-12 text-center">
+                  <p className="text-muted-foreground">No recipes yet — be the first!</p>
+                  <Link to="/recipes/add" className="mt-4 inline-block">
+                    <Button className="rounded-full">Add a recipe</Button>
+                  </Link>
+                </div>
+              )
+              : recipes.map((r) => <RecipeCard key={r.id} recipe={r} />)}
         </div>
       </section>
 
-      {/* Feature strip */}
-      <section className="mx-auto mt-20 max-w-7xl px-4 sm:px-6">
+      <section className="mx-auto mt-20 max-w-7xl px-4 pb-16 sm:px-6">
         <div className="grid gap-6 rounded-3xl border bg-card p-8 md:grid-cols-3 md:p-12">
           <Feature icon={<ChefHat className="h-5 w-5" />} title="Chef-tested">
             Every recipe is tested and rated by real home cooks like you.
@@ -142,8 +165,8 @@ function Home() {
           <Feature icon={<Utensils className="h-5 w-5" />} title="Smart shopping">
             Turn any recipe into a tidy shopping list in one tap.
           </Feature>
-          <Feature icon={<Sparkles className="h-5 w-5" />} title="Personalized">
-            Recommendations tuned to what you love (and what you don't).
+          <Feature icon={<Sparkles className="h-5 w-5" />} title="Community-powered">
+            Comment, like, and follow the cooks whose food you love.
           </Feature>
         </div>
       </section>
@@ -151,20 +174,10 @@ function Home() {
   );
 }
 
-function Feature({
-  icon,
-  title,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-}) {
+function Feature({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
-        {icon}
-      </div>
+      <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">{icon}</div>
       <h3 className="mt-4 font-display text-xl font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{children}</p>
     </div>

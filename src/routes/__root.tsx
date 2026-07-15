@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/hooks/useAuth";
 
 function NotFoundComponent() {
   return (
@@ -20,12 +22,9 @@ function NotFoundComponent() {
         <div className="mx-auto mb-4 w-fit rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
           404
         </div>
-        <h1 className="font-display text-4xl font-semibold">
-          This dish is off the menu
-        </h1>
+        <h1 className="font-display text-4xl font-semibold">This dish is off the menu</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          We couldn't find the page you were looking for. It may have been moved
-          or eaten by a very hungry chef.
+          We couldn't find the page you were looking for.
         </p>
         <div className="mt-6 flex justify-center gap-2">
           <Link to="/">
@@ -53,9 +52,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="font-display text-2xl font-semibold">Something burned</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Try again or head home while we sort things out.
-        </p>
+        <p className="mt-2 text-sm text-muted-foreground">Try again or head home.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <Button
             onClick={() => {
@@ -86,26 +83,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Discover, cook, and share beautiful recipes with Saveur — an interactive recipe book for curious home cooks.",
       },
       { property: "og:title", content: "Saveur — Interactive Recipe Book" },
-      {
-        property: "og:description",
-        content:
-          "Discover, cook, and share beautiful recipes with Saveur.",
-      },
+      { property: "og:description", content: "Discover, cook, and share beautiful recipes with Saveur." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
       { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
-      {
-        rel: "preconnect",
-        href: "https://fonts.googleapis.com",
-      },
-      {
-        rel: "preconnect",
-        href: "https://fonts.gstatic.com",
-        crossOrigin: "anonymous",
-      },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap",
@@ -137,7 +123,10 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <AuthProvider>
+        <Outlet />
+        <Toaster richColors position="top-right" />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

@@ -1,27 +1,21 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  BookOpen,
-  ChefHat,
-  Heart,
-  LayoutDashboard,
-  PlusCircle,
-  Settings,
-  Shield,
-  User,
-} from "lucide-react";
+import { BookOpen, ChefHat, LayoutDashboard, PlusCircle, Shield, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
-const items: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { to: "/recipes/add", label: "Add recipe", icon: PlusCircle },
-  { to: "/recipes", label: "My recipes", icon: BookOpen },
-  { to: "/profile", label: "Profile", icon: User },
-  { to: "/categories", label: "Favorites", icon: Heart },
-  { to: "/admin", label: "Admin", icon: Shield },
-];
+type Item = { to: string; label: string; icon: LucideIcon };
 
 export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { isAdmin, isChef } = useAuth();
+
+  const items: Item[] = [
+    { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
+    { to: "/recipes/add", label: "Add recipe", icon: PlusCircle },
+    { to: "/recipes", label: "Browse recipes", icon: BookOpen },
+    { to: "/profile", label: "Profile", icon: User },
+  ];
+  if (isAdmin) items.push({ to: "/admin", label: "Admin", icon: Shield });
 
   return (
     <aside className="hidden w-64 shrink-0 border-r bg-sidebar text-sidebar-foreground lg:block">
@@ -30,7 +24,9 @@ export function Sidebar() {
           <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
             <ChefHat className="h-4 w-4" />
           </div>
-          <span className="text-sm font-semibold">Kitchen</span>
+          <span className="text-sm font-semibold">
+            {isAdmin ? "Admin panel" : isChef ? "Chef kitchen" : "My kitchen"}
+          </span>
         </div>
 
         <nav className="flex flex-col gap-1">
@@ -52,15 +48,6 @@ export function Sidebar() {
             );
           })}
         </nav>
-
-        <div className="mt-auto rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Settings className="h-4 w-4" /> Pro tip
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Add cover photos to your recipes to get 3× more views.
-          </p>
-        </div>
       </div>
     </aside>
   );
