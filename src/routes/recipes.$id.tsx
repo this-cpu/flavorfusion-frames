@@ -117,8 +117,12 @@ function RecipeDetails() {
   const { recipe, comments, likeCount, liked } = data;
   const author = (recipe as any).profiles;
   const category = (recipe as any).categories;
-  const ingredients: string[] = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
-  const steps: string[] = Array.isArray(recipe.steps) ? recipe.steps : [];
+  const ingredients: string[] = Array.isArray(recipe.ingredients)
+    ? (recipe.ingredients as unknown[]).filter((x): x is string => typeof x === "string")
+    : [];
+  const steps: string[] = Array.isArray(recipe.steps)
+    ? (recipe.steps as unknown[]).filter((x): x is string => typeof x === "string")
+    : [];
 
   return (
     <SiteLayout>

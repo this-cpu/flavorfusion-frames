@@ -57,11 +57,11 @@ function RecipeListing() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate({ search: (s) => ({ ...s, q: q || undefined }) });
+    navigate({ search: (s: Search) => ({ ...s, q: q || undefined }) });
   };
 
   const setCategory = (slug: string) => {
-    navigate({ search: (s) => ({ ...s, category: slug === "all" ? undefined : slug }) });
+    navigate({ search: (s: Search) => ({ ...s, category: slug === "all" ? undefined : slug }) });
   };
 
   return (
