@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ChefHat } from "lucide-react";
+import { ChefHat, ShieldCheck, User as UserIcon, UtensilsCrossed } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,12 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
+const DEMO_ACCOUNTS = [
+  { role: "admin", label: "Admin", email: "admin@saveur.dev", password: "admin1234", icon: ShieldCheck, tint: "text-red-500" },
+  { role: "chef", label: "Chef", email: "chef@saveur.dev", password: "chef1234", icon: UtensilsCrossed, tint: "text-orange-500" },
+  { role: "homecook", label: "Home cook", email: "homecook@saveur.dev", password: "homecook1234", icon: UserIcon, tint: "text-emerald-600" },
+] as const;
+
 function AuthPage() {
   const { mode } = Route.useSearch();
   const { session, refresh } = useAuth();
@@ -35,15 +41,19 @@ function AuthPage() {
     if (session) navigate({ to: "/dashboard", replace: true });
   }, [session, navigate]);
 
-  const signIn = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doSignIn = async (em: string, pw: string) => {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email: em, password: pw });
     setLoading(false);
     if (error) return toast.error(error.message);
     toast.success("Welcome back!");
     await refresh();
     navigate({ to: "/dashboard", replace: true });
+  };
+
+  const signIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    doSignIn(email, password);
   };
 
   const signUp = async (e: React.FormEvent) => {
@@ -82,6 +92,37 @@ function AuthPage() {
             <TabsContent value="signin" className="mt-6">
               <h1 className="font-display text-3xl font-semibold">Welcome back</h1>
               <p className="mt-1 text-sm text-muted-foreground">Sign in to your kitchen.</p>
+
+              <div className="mt-6 rounded-2xl border bg-card p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Demo accounts (one-click sign-in)
+                </p>
+                <div className="mt-3 grid gap-2">
+                  {DEMO_ACCOUNTS.map((a) => (
+                    <button
+                      key={a.role}
+                      type="button"
+                      disabled={loading}
+                      onClick={() => doSignIn(a.email, a.password)}
+                      className="group flex items-center gap-3 rounded-xl border bg-background p-3 text-left transition-colors hover:border-primary hover:bg-accent/40 disabled:opacity-60"
+                    >
+                      <div className={`grid h-9 w-9 place-items-center rounded-lg bg-muted ${a.tint}`}>
+                        <a.icon className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">{a.label}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {a.email} · {a.password}
+                        </p>
+                      </div>
+                      <span className="text-xs text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                        Sign in →
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <form onSubmit={signIn} className="mt-6 space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="e1">Email</Label>
