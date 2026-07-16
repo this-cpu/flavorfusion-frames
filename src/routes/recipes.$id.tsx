@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, Flame, Heart, Share2, Trash2, Users } from "lucide-react";
+import { Clock, Flame, Heart, Printer, Share2, ShoppingCart, Trash2, Users, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/Layouts";
@@ -12,7 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { PLACEHOLDER_IMG, totalTime } from "@/lib/types";
+import { PLACEHOLDER_IMG, totalTime, NUTRITION_LABELS, type NutritionKey } from "@/lib/types";
+import { addToShoppingList } from "@/lib/shopping-list";
 import { formatDistanceToNow } from "date-fns";
 
 export const Route = createFileRoute("/recipes/$id")({
@@ -25,6 +26,7 @@ function RecipeDetails() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [commentText, setCommentText] = useState("");
+  const [servingsOverride, setServingsOverride] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["recipe", id],
@@ -123,16 +125,28 @@ function RecipeDetails() {
   const steps: string[] = Array.isArray(recipe.steps)
     ? (recipe.steps as unknown[]).filter((x): x is string => typeof x === "string")
     : [];
+  const baseServings = recipe.servings ?? 2;
+  const servings = servingsOverride ?? baseServings;
+  const scale = servings / baseServings;
+
+  const nutritionRows: NutritionKey[] = ["calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g", "sodium_mg"];
+  const hasAnyNutrition = nutritionRows.some((k) => (recipe as any)[k] != null);
+
+  const handleAddToList = () => {
+    const n = addToShoppingList(ingredients, { recipe_id: recipe.id, recipe_title: recipe.title });
+    if (n === 0) toast.info("All ingredients are already on your list");
+    else toast.success(`${n} item${n === 1 ? "" : "s"} added to shopping list`);
+  };
 
   return (
     <SiteLayout>
       <section className="relative">
-        <div className="relative h-[52vh] w-full overflow-hidden">
+        <div className="relative h-[52vh] w-full overflow-hidden print:h-64">
           <img src={recipe.image_url || PLACEHOLDER_IMG} alt={recipe.title} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-linear-to-t from-background via-background/60 to-transparent" />
         </div>
 
-        <div className="mx-auto -mt-40 max-w-4xl px-4 sm:px-6">
+        <div className="mx-auto -mt-40 max-w-4xl px-4 sm:px-6 print:mt-0">
           <div className="glass-strong rounded-3xl p-8 shadow-warm">
             <div className="flex flex-wrap items-center gap-2">
               {category && <Badge className="rounded-full">{category.name}</Badge>}
@@ -156,12 +170,18 @@ function RecipeDetails() {
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="icon" onClick={() => {
+              <div className="flex flex-wrap gap-2 print:hidden">
+                <Button variant="outline" size="icon" title="Share" onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
                   toast.success("Link copied!");
                 }}>
                   <Share2 className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" title="Print" onClick={() => window.print()}>
+                  <Printer className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" onClick={handleAddToList} className="rounded-full">
+                  <ShoppingCart className="mr-2 h-4 w-4" /> Add to list
                 </Button>
                 <Button
                   onClick={() => toggleLike.mutate()}
@@ -176,7 +196,7 @@ function RecipeDetails() {
 
             <dl className="mt-8 grid grid-cols-2 gap-4 border-t pt-6 sm:grid-cols-4">
               <Stat icon={<Clock className="h-4 w-4" />} label="Time" value={totalTime(recipe)} />
-              <Stat icon={<Users className="h-4 w-4" />} label="Servings" value={String(recipe.servings ?? 2)} />
+              <Stat icon={<Users className="h-4 w-4" />} label="Servings" value={String(baseServings)} />
               <Stat icon={<Flame className="h-4 w-4" />} label="Calories" value={recipe.calories ? `${recipe.calories}` : "—"} />
               <Stat icon={<Heart className="h-4 w-4" />} label="Likes" value={String(likeCount)} />
             </dl>
@@ -187,8 +207,9 @@ function RecipeDetails() {
       <section className="mx-auto mt-16 grid max-w-6xl gap-10 px-4 pb-20 sm:px-6 lg:grid-cols-[1fr_360px]">
         <div>
           <Tabs defaultValue="instructions">
-            <TabsList className="rounded-full">
+            <TabsList className="rounded-full print:hidden">
               <TabsTrigger value="instructions" className="rounded-full">Instructions</TabsTrigger>
+              <TabsTrigger value="nutrition" className="rounded-full">Nutrition</TabsTrigger>
               <TabsTrigger value="comments" className="rounded-full">
                 Comments ({comments.length})
               </TabsTrigger>
@@ -210,6 +231,89 @@ function RecipeDetails() {
                   </li>
                 ))}
               </ol>
+            </TabsContent>
+
+            <TabsContent value="nutrition" className="mt-6">
+              <div className="rounded-2xl border bg-card p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-display text-xl font-semibold">Nutrition</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Auto-scaled by servings. Values are approximate.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-full border p-1">
+                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full"
+                      onClick={() => setServingsOverride(Math.max(1, servings - 1))}>
+                      <Minus className="h-3 w-3" />
+                    </Button>
+                    <span className="min-w-16 text-center text-sm font-medium">
+                      {servings} serving{servings === 1 ? "" : "s"}
+                    </span>
+                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full"
+                      onClick={() => setServingsOverride(servings + 1)}>
+                      <Plus className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                {!hasAnyNutrition ? (
+                  <p className="mt-6 text-sm text-muted-foreground">
+                    No nutrition data available for this recipe yet.
+                  </p>
+                ) : (
+                  <>
+                    <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      {nutritionRows.map((k) => {
+                        const raw = (recipe as any)[k] as number | null;
+                        if (raw == null) return null;
+                        const scaled = Math.round(raw * scale * 100) / 100;
+                        const total = Math.round(raw * servings * 100) / 100;
+                        return (
+                          <div key={k} className="rounded-xl bg-muted/60 p-4">
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                              {NUTRITION_LABELS[k].label}
+                            </p>
+                            <p className="mt-1 font-display text-2xl font-semibold">
+                              {scaled}
+                              <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                {NUTRITION_LABELS[k].unit}
+                              </span>
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">per serving · {total} total</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-6 rounded-xl border border-dashed p-4 text-xs text-muted-foreground">
+                      Percent of daily value (2,000 kcal reference):
+                      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {nutritionRows.map((k) => {
+                          const dv: Partial<Record<NutritionKey, number>> = {
+                            calories: 2000, protein_g: 50, carbs_g: 275, fat_g: 78, fiber_g: 28, sugar_g: 50, sodium_mg: 2300,
+                          };
+                          const target = dv[k];
+                          const raw = (recipe as any)[k] as number | null;
+                          if (!target || raw == null) return null;
+                          const pct = Math.min(100, Math.round((raw * scale / target) * 100));
+                          return (
+                            <div key={k}>
+                              <div className="flex justify-between text-[11px]">
+                                <span>{NUTRITION_LABELS[k].label}</span>
+                                <span>{pct}%</span>
+                              </div>
+                              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                                <div className="h-full bg-primary" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </TabsContent>
 
             <TabsContent value="comments" className="mt-6 space-y-4">
@@ -274,8 +378,15 @@ function RecipeDetails() {
         </div>
 
         <aside className="rounded-3xl border bg-card p-6">
-          <h3 className="font-display text-xl font-semibold">Ingredients</h3>
-          <p className="text-xs text-muted-foreground">for {recipe.servings ?? 2} servings</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-display text-xl font-semibold">Ingredients</h3>
+              <p className="text-xs text-muted-foreground">for {servings} serving{servings === 1 ? "" : "s"}</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleAddToList} className="print:hidden">
+              <ShoppingCart className="mr-1 h-3 w-3" /> Add all
+            </Button>
+          </div>
           <ul className="mt-4 space-y-3">
             {ingredients.length === 0 && (
               <li className="text-sm text-muted-foreground">No ingredients listed.</li>
