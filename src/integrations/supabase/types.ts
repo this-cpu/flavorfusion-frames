@@ -130,18 +130,24 @@ export type Database = {
         Row: {
           author_id: string
           calories: number | null
+          carbs_g: number | null
           category_id: number | null
           cook_time_min: number | null
           created_at: string
           description: string | null
           difficulty: string | null
+          fat_g: number | null
+          fiber_g: number | null
           id: string
           image_url: string | null
           ingredients: Json
           is_published: boolean
           prep_time_min: number | null
+          protein_g: number | null
           servings: number | null
+          sodium_mg: number | null
           steps: Json
+          sugar_g: number | null
           tags: string[] | null
           title: string
           updated_at: string
@@ -149,18 +155,24 @@ export type Database = {
         Insert: {
           author_id: string
           calories?: number | null
+          carbs_g?: number | null
           category_id?: number | null
           cook_time_min?: number | null
           created_at?: string
           description?: string | null
           difficulty?: string | null
+          fat_g?: number | null
+          fiber_g?: number | null
           id?: string
           image_url?: string | null
           ingredients?: Json
           is_published?: boolean
           prep_time_min?: number | null
+          protein_g?: number | null
           servings?: number | null
+          sodium_mg?: number | null
           steps?: Json
+          sugar_g?: number | null
           tags?: string[] | null
           title: string
           updated_at?: string
@@ -168,18 +180,24 @@ export type Database = {
         Update: {
           author_id?: string
           calories?: number | null
+          carbs_g?: number | null
           category_id?: number | null
           cook_time_min?: number | null
           created_at?: string
           description?: string | null
           difficulty?: string | null
+          fat_g?: number | null
+          fiber_g?: number | null
           id?: string
           image_url?: string | null
           ingredients?: Json
           is_published?: boolean
           prep_time_min?: number | null
+          protein_g?: number | null
           servings?: number | null
+          sodium_mg?: number | null
           steps?: Json
+          sugar_g?: number | null
           tags?: string[] | null
           title?: string
           updated_at?: string
