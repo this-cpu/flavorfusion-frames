@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BookOpen, ChefHat, LayoutDashboard, PlusCircle, Shield, User } from "lucide-react";
+import { BookOpen, ChefHat, LayoutDashboard, PlusCircle, Shield, ShoppingCart, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -13,6 +13,7 @@ export function Sidebar() {
     { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
     { to: "/recipes/add", label: "Add recipe", icon: PlusCircle },
     { to: "/recipes", label: "Browse recipes", icon: BookOpen },
+    { to: "/shopping-list", label: "Shopping list", icon: ShoppingCart },
     { to: "/profile", label: "Profile", icon: User },
   ];
   if (isAdmin) items.push({ to: "/admin", label: "Admin", icon: Shield });
