@@ -175,3 +175,13 @@
 @utility shadow-warm {
   box-shadow: var(--shadow-warm);
 }
+
+/* Print: hide chrome, show recipe only */
+@media print {
+  header, footer, aside, nav, .print\:hidden { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .glass, .glass-strong { background: white !important; backdrop-filter: none !important; border: 1px solid #ddd !important; }
+  img { max-height: 300px !important; }
+  a { color: black !important; text-decoration: none !important; }
+  section, div { break-inside: avoid; }
+}
