@@ -30,7 +30,8 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const navigate = useNavigate();
-  const { user, profile, primaryRole, signOut } = useAuth();
+  const { user, profile, primaryRole, isAdmin, isChef, isHomecook, signOut } = useAuth();
+  const canPublish = isAdmin || isChef || isHomecook;
 
   const initials = (profile?.display_name || user?.email || "U").slice(0, 2).toUpperCase();
 
@@ -107,9 +108,15 @@ export function Navbar() {
                   <DropdownMenuItem onClick={() => navigate({ to: "/profile" })}>
                     Profile
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate({ to: "/recipes/add" })}>
-                    Add recipe
-                  </DropdownMenuItem>
+                  {canPublish ? (
+                    <DropdownMenuItem onClick={() => navigate({ to: "/recipes/add" })}>
+                      Add recipe
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem onClick={() => navigate({ to: "/apply" })}>
+                      Apply as chef / cook
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={async () => {

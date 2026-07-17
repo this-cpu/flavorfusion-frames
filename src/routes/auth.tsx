@@ -8,8 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { AppRole } from "@/lib/types";
 
 type Search = { mode?: "signin" | "signup" };
 
@@ -35,7 +33,6 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [role, setRole] = useState<Exclude<AppRole, "admin">>("homecook");
 
   useEffect(() => {
     if (session) navigate({ to: "/dashboard", replace: true });
@@ -64,7 +61,7 @@ function AuthPage() {
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/dashboard`,
-        data: { display_name: displayName || email.split("@")[0], role },
+        data: { display_name: displayName || email.split("@")[0] },
       },
     });
     setLoading(false);
@@ -154,20 +151,10 @@ function AuthPage() {
                   <Label htmlFor="p2">Password</Label>
                   <Input id="p2" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Min 8 characters" />
                 </div>
-                <div className="space-y-2">
-                  <Label>I'm a...</Label>
-                  <RadioGroup value={role} onValueChange={(v) => setRole(v as "chef" | "homecook")} className="grid grid-cols-2 gap-2">
-                    <label className={`cursor-pointer rounded-xl border p-3 ${role === "homecook" ? "border-primary bg-primary/5" : ""}`}>
-                      <RadioGroupItem value="homecook" className="sr-only" />
-                      <p className="font-medium">🏠 Home cook</p>
-                      <p className="text-xs text-muted-foreground">Cooking for family & friends</p>
-                    </label>
-                    <label className={`cursor-pointer rounded-xl border p-3 ${role === "chef" ? "border-primary bg-primary/5" : ""}`}>
-                      <RadioGroupItem value="chef" className="sr-only" />
-                      <p className="font-medium">👨‍🍳 Chef</p>
-                      <p className="text-xs text-muted-foreground">Professional or aspiring</p>
-                    </label>
-                  </RadioGroup>
+                <div className="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
+                  After signup you'll browse as an <b>Explorer</b>. To publish recipes,
+                  apply from your dashboard as a <b>Chef</b> (upload a certificate) or
+                  <b> Home cook</b> (submit a sample recipe).
                 </div>
                 <Button type="submit" size="lg" className="w-full rounded-full" disabled={loading}>
                   {loading ? "Creating..." : "Create account"}
