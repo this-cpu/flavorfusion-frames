@@ -1,4 +1,14 @@
-export type AppRole = "admin" | "chef" | "homecook";
+export type AppRole = "admin" | "chef" | "homecook" | "user";
+export type MealType = "breakfast" | "lunch" | "dinner" | "dessert" | "snack" | "drink";
+
+export const MEAL_TYPES: { slug: MealType; label: string; emoji: string; desc: string }[] = [
+  { slug: "breakfast", label: "Breakfast", emoji: "🥐", desc: "Rise & shine" },
+  { slug: "lunch", label: "Lunch", emoji: "🥗", desc: "Midday meals" },
+  { slug: "dinner", label: "Dinner", emoji: "🍽️", desc: "Evening comfort" },
+  { slug: "dessert", label: "Dessert", emoji: "🍰", desc: "Sweet endings" },
+  { slug: "snack", label: "Snack", emoji: "🥨", desc: "Small bites" },
+  { slug: "drink", label: "Drink", emoji: "🥤", desc: "Sips & pours" },
+];
 
 export type DbRecipe = {
   id: string;
@@ -7,6 +17,7 @@ export type DbRecipe = {
   description: string | null;
   image_url: string | null;
   category_id: number | null;
+  meal_type: MealType | null;
   prep_time_min: number | null;
   cook_time_min: number | null;
   servings: number | null;
