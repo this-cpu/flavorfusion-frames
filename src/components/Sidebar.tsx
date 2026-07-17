@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BookOpen, ChefHat, LayoutDashboard, PlusCircle, Shield, ShoppingCart, User } from "lucide-react";
+import { BookOpen, ChefHat, LayoutDashboard, PlusCircle, Shield, ShoppingCart, Sparkles, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -7,15 +7,20 @@ type Item = { to: string; label: string; icon: LucideIcon };
 
 export function Sidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { isAdmin, isChef } = useAuth();
+  const { isAdmin, isChef, isHomecook, isPending } = useAuth();
 
   const items: Item[] = [
     { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
-    { to: "/recipes/add", label: "Add recipe", icon: PlusCircle },
+  ];
+  if (isAdmin || isChef || isHomecook) {
+    items.push({ to: "/recipes/add", label: "Add recipe", icon: PlusCircle });
+  }
+  items.push(
     { to: "/recipes", label: "Browse recipes", icon: BookOpen },
     { to: "/shopping-list", label: "Shopping list", icon: ShoppingCart },
     { to: "/profile", label: "Profile", icon: User },
-  ];
+  );
+  if (isPending) items.push({ to: "/apply", label: "Apply as chef/cook", icon: Sparkles });
   if (isAdmin) items.push({ to: "/admin", label: "Admin", icon: Shield });
 
   return (
@@ -26,7 +31,7 @@ export function Sidebar() {
             <ChefHat className="h-4 w-4" />
           </div>
           <span className="text-sm font-semibold">
-            {isAdmin ? "Admin panel" : isChef ? "Chef kitchen" : "My kitchen"}
+            {isAdmin ? "Admin panel" : isChef ? "Chef kitchen" : isHomecook ? "My kitchen" : "Explorer"}
           </span>
         </div>
 

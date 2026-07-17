@@ -11,6 +11,8 @@ type AuthContextValue = {
   loading: boolean;
   isAdmin: boolean;
   isChef: boolean;
+  isHomecook: boolean;
+  isPending: boolean; // only has "user" role — hasn't been approved yet
   primaryRole: AppRole | null;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -53,21 +55,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  const isAdmin = roles.includes("admin");
+  const isChef = roles.includes("chef");
+  const isHomecook = roles.includes("homecook");
+  const primaryRole: AppRole | null = isAdmin
+    ? "admin"
+    : isChef
+      ? "chef"
+      : isHomecook
+        ? "homecook"
+        : roles.includes("user")
+          ? "user"
+          : null;
+
   const value: AuthContextValue = {
     session,
     user: session?.user ?? null,
     profile,
     roles,
     loading,
-    isAdmin: roles.includes("admin"),
-    isChef: roles.includes("chef"),
-    primaryRole: roles.includes("admin")
-      ? "admin"
-      : roles.includes("chef")
-        ? "chef"
-        : roles.includes("homecook")
-          ? "homecook"
-          : null,
+    isAdmin,
+    isChef,
+    isHomecook,
+    isPending: !isAdmin && !isChef && !isHomecook && roles.includes("user"),
+    primaryRole,
     refresh: () => loadUserData(session?.user.id),
     signOut: async () => {
       await supabase.auth.signOut();

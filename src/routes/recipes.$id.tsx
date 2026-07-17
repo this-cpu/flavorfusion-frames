@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, Flame, Heart, Printer, Share2, ShoppingCart, Trash2, Users, Minus, Plus } from "lucide-react";
+import { Clock, Flame, Heart, Printer, Share2, ShoppingCart, Star, Trash2, Users, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/Layouts";
@@ -29,26 +29,65 @@ function RecipeDetails() {
   const [servingsOverride, setServingsOverride] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["recipe", id],
+    queryKey: ["recipe", id, user?.id ?? "anon"],
     queryFn: async () => {
-      const { data: recipe } = await supabase
+      // Fetch the recipe alone — no FK-embed (no explicit FK constraints exist)
+      const { data: recipe, error } = await supabase
         .from("recipes")
-        .select("*, categories(name, slug), profiles!recipes_author_id_fkey(display_name, username, avatar_url)")
+        .select("*")
         .eq("id", id)
         .maybeSingle();
+      if (error) throw error;
       if (!recipe) return null;
-      const [{ data: comments }, { count: likeCount }, likedRes] = await Promise.all([
-        supabase
-          .from("comments")
-          .select("id, body, created_at, user_id, profiles!comments_user_id_fkey(display_name, avatar_url)")
-          .eq("recipe_id", id)
-          .order("created_at", { ascending: false }),
+
+      // Fetch related bits in parallel — none of them can 'not found' the recipe
+      const [
+        { data: author },
+        { data: category },
+        { data: comments },
+        { count: likeCount },
+        likedRes,
+        { data: ratings },
+        myRatingRes,
+      ] = await Promise.all([
+        supabase.from("profiles").select("display_name, username, avatar_url").eq("id", recipe.author_id).maybeSingle(),
+        recipe.category_id
+          ? supabase.from("categories").select("name, slug").eq("id", recipe.category_id).maybeSingle()
+          : Promise.resolve({ data: null }),
+        supabase.from("comments").select("id, body, created_at, user_id").eq("recipe_id", id).order("created_at", { ascending: false }),
         supabase.from("likes").select("*", { count: "exact", head: true }).eq("recipe_id", id),
         user
           ? supabase.from("likes").select("recipe_id").eq("recipe_id", id).eq("user_id", user.id).maybeSingle()
           : Promise.resolve({ data: null }),
+        supabase.from("ratings").select("stars").eq("recipe_id", id),
+        user
+          ? supabase.from("ratings").select("stars").eq("recipe_id", id).eq("user_id", user.id).maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
-      return { recipe, comments: comments ?? [], likeCount: likeCount ?? 0, liked: !!likedRes.data };
+
+      // Resolve commenter profiles in one query
+      const commenterIds = Array.from(new Set((comments ?? []).map((c: any) => c.user_id)));
+      const { data: commenterProfiles } = commenterIds.length
+        ? await supabase.from("profiles").select("id, display_name, avatar_url").in("id", commenterIds)
+        : { data: [] as any[] };
+      const profileById = new Map((commenterProfiles ?? []).map((p: any) => [p.id, p]));
+      const enrichedComments = (comments ?? []).map((c: any) => ({ ...c, profile: profileById.get(c.user_id) ?? null }));
+
+      const avgRating = ratings && ratings.length
+        ? ratings.reduce((s: number, r: any) => s + r.stars, 0) / ratings.length
+        : 0;
+
+      return {
+        recipe,
+        author: author ?? null,
+        category: category ?? null,
+        comments: enrichedComments,
+        likeCount: likeCount ?? 0,
+        liked: !!likedRes.data,
+        avgRating,
+        ratingCount: ratings?.length ?? 0,
+        myRating: (myRatingRes.data as any)?.stars ?? 0,
+      };
     },
   });
 
@@ -62,6 +101,24 @@ function RecipeDetails() {
       }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["recipe", id] }),
+    onError: (e: Error) => {
+      toast.error(e.message);
+      if (!user) navigate({ to: "/auth", search: { mode: "signin" } });
+    },
+  });
+
+  const setRating = useMutation({
+    mutationFn: async (stars: number) => {
+      if (!user) throw new Error("Sign in to rate");
+      const { error } = await supabase
+        .from("ratings")
+        .upsert({ recipe_id: id, user_id: user.id, stars }, { onConflict: "recipe_id,user_id" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Thanks for rating!");
+      qc.invalidateQueries({ queryKey: ["recipe", id] });
+    },
     onError: (e: Error) => {
       toast.error(e.message);
       if (!user) navigate({ to: "/auth", search: { mode: "signin" } });
@@ -116,9 +173,7 @@ function RecipeDetails() {
     );
   }
 
-  const { recipe, comments, likeCount, liked } = data;
-  const author = (recipe as any).profiles;
-  const category = (recipe as any).categories;
+  const { recipe, author, category, comments, likeCount, liked, avgRating, ratingCount, myRating } = data;
   const ingredients: string[] = Array.isArray(recipe.ingredients)
     ? (recipe.ingredients as unknown[]).filter((x): x is string => typeof x === "string")
     : [];
@@ -150,12 +205,24 @@ function RecipeDetails() {
           <div className="glass-strong rounded-3xl p-8 shadow-warm">
             <div className="flex flex-wrap items-center gap-2">
               {category && <Badge className="rounded-full">{category.name}</Badge>}
+              {recipe.meal_type && (
+                <Link to="/meals/$meal" params={{ meal: recipe.meal_type }}>
+                  <Badge variant="outline" className="rounded-full capitalize">{recipe.meal_type}</Badge>
+                </Link>
+              )}
               {(recipe.tags ?? []).map((t: string) => (
                 <Badge key={t} variant="outline" className="rounded-full">#{t}</Badge>
               ))}
             </div>
             <h1 className="mt-3 font-display text-4xl font-semibold sm:text-5xl">{recipe.title}</h1>
             <p className="mt-3 text-lg text-muted-foreground">{recipe.description}</p>
+
+            <div className="mt-4 flex items-center gap-3">
+              <StarRow value={avgRating} />
+              <span className="text-sm text-muted-foreground">
+                {avgRating.toFixed(1)} · {ratingCount} rating{ratingCount === 1 ? "" : "s"}
+              </span>
+            </div>
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -210,6 +277,7 @@ function RecipeDetails() {
             <TabsList className="rounded-full print:hidden">
               <TabsTrigger value="instructions" className="rounded-full">Instructions</TabsTrigger>
               <TabsTrigger value="nutrition" className="rounded-full">Nutrition</TabsTrigger>
+              <TabsTrigger value="reviews" className="rounded-full">Reviews</TabsTrigger>
               <TabsTrigger value="comments" className="rounded-full">
                 Comments ({comments.length})
               </TabsTrigger>
@@ -316,6 +384,33 @@ function RecipeDetails() {
               </div>
             </TabsContent>
 
+            <TabsContent value="reviews" className="mt-6">
+              <div className="rounded-2xl border bg-card p-6">
+                <h3 className="font-display text-xl font-semibold">Rate this recipe</h3>
+                {user ? (
+                  <>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {myRating > 0 ? `Your rating: ${myRating} star${myRating === 1 ? "" : "s"}` : "Tap a star to rate."}
+                    </p>
+                    <StarInput value={myRating} onChange={(n) => setRating.mutate(n)} />
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    <Link to="/auth" search={{ mode: "signin" }} className="text-primary underline">Sign in</Link> to rate.
+                  </p>
+                )}
+
+                <div className="mt-6 border-t pt-6">
+                  <p className="text-sm text-muted-foreground">Community average</p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <StarRow value={avgRating} large />
+                    <span className="font-display text-3xl font-semibold">{avgRating.toFixed(1)}</span>
+                    <span className="text-sm text-muted-foreground">/ 5 · {ratingCount} rating{ratingCount === 1 ? "" : "s"}</span>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
             <TabsContent value="comments" className="mt-6 space-y-4">
               {user ? (
                 <div className="rounded-2xl border bg-card p-5">
@@ -355,11 +450,11 @@ function RecipeDetails() {
                 <div key={c.id} className="rounded-2xl border bg-card p-5">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={c.profiles?.avatar_url ?? undefined} />
-                      <AvatarFallback>{(c.profiles?.display_name ?? "U").slice(0, 2).toUpperCase()}</AvatarFallback>
+                      <AvatarImage src={c.profile?.avatar_url ?? undefined} />
+                      <AvatarFallback>{(c.profile?.display_name ?? "U").slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{c.profiles?.display_name ?? "User"}</p>
+                      <p className="text-sm font-medium">{c.profile?.display_name ?? "User"}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatDistanceToNow(new Date(c.created_at))} ago
                       </p>
@@ -412,6 +507,41 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
         <p className="text-xs text-muted-foreground">{label}</p>
         <p className="text-sm font-semibold">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function StarRow({ value, large = false }: { value: number; large?: boolean }) {
+  const size = large ? "h-6 w-6" : "h-4 w-4";
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          className={`${size} ${n <= Math.round(value) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function StarInput({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const [hover, setHover] = useState(0);
+  const shown = hover || value;
+  return (
+    <div className="mt-3 flex items-center gap-1" onMouseLeave={() => setHover(0)}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onMouseEnter={() => setHover(n)}
+          onClick={() => onChange(n)}
+          className="rounded p-1 transition-transform hover:scale-110"
+          aria-label={`Rate ${n} star${n === 1 ? "" : "s"}`}
+        >
+          <Star className={`h-7 w-7 ${n <= shown ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`} />
+        </button>
+      ))}
     </div>
   );
 }

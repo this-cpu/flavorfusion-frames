@@ -17,9 +17,11 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RecipesIndexRouteImport } from './routes/recipes.index'
 import { Route as RecipesIdRouteImport } from './routes/recipes.$id'
+import { Route as MealsMealRouteImport } from './routes/meals.$meal'
 import { Route as AuthenticatedShoppingListRouteImport } from './routes/_authenticated/shopping-list'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedApplyRouteImport } from './routes/_authenticated/apply'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedRecipesAddRouteImport } from './routes/_authenticated/recipes.add'
 import { Route as AuthenticatedRecipesEditIdRouteImport } from './routes/_authenticated/recipes.edit.$id'
@@ -63,6 +65,11 @@ const RecipesIdRoute = RecipesIdRouteImport.update({
   path: '/recipes/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MealsMealRoute = MealsMealRouteImport.update({
+  id: '/meals/$meal',
+  path: '/meals/$meal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedShoppingListRoute =
   AuthenticatedShoppingListRouteImport.update({
     id: '/shopping-list',
@@ -77,6 +84,11 @@ const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedApplyRoute = AuthenticatedApplyRouteImport.update({
+  id: '/apply',
+  path: '/apply',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -103,9 +115,11 @@ export interface FileRoutesByFullPath {
   '/categories': typeof CategoriesRoute
   '/contact': typeof ContactRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/shopping-list': typeof AuthenticatedShoppingListRoute
+  '/meals/$meal': typeof MealsMealRoute
   '/recipes/$id': typeof RecipesIdRoute
   '/recipes/': typeof RecipesIndexRoute
   '/recipes/add': typeof AuthenticatedRecipesAddRoute
@@ -118,9 +132,11 @@ export interface FileRoutesByTo {
   '/categories': typeof CategoriesRoute
   '/contact': typeof ContactRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/apply': typeof AuthenticatedApplyRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/profile': typeof AuthenticatedProfileRoute
   '/shopping-list': typeof AuthenticatedShoppingListRoute
+  '/meals/$meal': typeof MealsMealRoute
   '/recipes/$id': typeof RecipesIdRoute
   '/recipes': typeof RecipesIndexRoute
   '/recipes/add': typeof AuthenticatedRecipesAddRoute
@@ -135,9 +151,11 @@ export interface FileRoutesById {
   '/categories': typeof CategoriesRoute
   '/contact': typeof ContactRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/apply': typeof AuthenticatedApplyRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/shopping-list': typeof AuthenticatedShoppingListRoute
+  '/meals/$meal': typeof MealsMealRoute
   '/recipes/$id': typeof RecipesIdRoute
   '/recipes/': typeof RecipesIndexRoute
   '/_authenticated/recipes/add': typeof AuthenticatedRecipesAddRoute
@@ -152,9 +170,11 @@ export interface FileRouteTypes {
     | '/categories'
     | '/contact'
     | '/admin'
+    | '/apply'
     | '/dashboard'
     | '/profile'
     | '/shopping-list'
+    | '/meals/$meal'
     | '/recipes/$id'
     | '/recipes/'
     | '/recipes/add'
@@ -167,9 +187,11 @@ export interface FileRouteTypes {
     | '/categories'
     | '/contact'
     | '/admin'
+    | '/apply'
     | '/dashboard'
     | '/profile'
     | '/shopping-list'
+    | '/meals/$meal'
     | '/recipes/$id'
     | '/recipes'
     | '/recipes/add'
@@ -183,9 +205,11 @@ export interface FileRouteTypes {
     | '/categories'
     | '/contact'
     | '/_authenticated/admin'
+    | '/_authenticated/apply'
     | '/_authenticated/dashboard'
     | '/_authenticated/profile'
     | '/_authenticated/shopping-list'
+    | '/meals/$meal'
     | '/recipes/$id'
     | '/recipes/'
     | '/_authenticated/recipes/add'
@@ -199,6 +223,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CategoriesRoute: typeof CategoriesRoute
   ContactRoute: typeof ContactRoute
+  MealsMealRoute: typeof MealsMealRoute
   RecipesIdRoute: typeof RecipesIdRoute
   RecipesIndexRoute: typeof RecipesIndexRoute
 }
@@ -261,6 +286,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecipesIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/meals/$meal': {
+      id: '/meals/$meal'
+      path: '/meals/$meal'
+      fullPath: '/meals/$meal'
+      preLoaderRoute: typeof MealsMealRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/shopping-list': {
       id: '/_authenticated/shopping-list'
       path: '/shopping-list'
@@ -280,6 +312,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/apply': {
+      id: '/_authenticated/apply'
+      path: '/apply'
+      fullPath: '/apply'
+      preLoaderRoute: typeof AuthenticatedApplyRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin': {
@@ -308,6 +347,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedApplyRoute: typeof AuthenticatedApplyRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
   AuthenticatedShoppingListRoute: typeof AuthenticatedShoppingListRoute
@@ -317,6 +357,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedApplyRoute: AuthenticatedApplyRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedProfileRoute: AuthenticatedProfileRoute,
   AuthenticatedShoppingListRoute: AuthenticatedShoppingListRoute,
@@ -334,19 +375,10 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CategoriesRoute: CategoriesRoute,
   ContactRoute: ContactRoute,
+  MealsMealRoute: MealsMealRoute,
   RecipesIdRoute: RecipesIdRoute,
   RecipesIndexRoute: RecipesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -28,11 +28,12 @@ function Admin() {
     queryKey: ["admin-data"],
     enabled: isAdmin,
     queryFn: async () => {
-      const [profilesRes, recipesRes, commentsRes, rolesRes] = await Promise.all([
+      const [profilesRes, recipesRes, commentsRes, rolesRes, appsRes] = await Promise.all([
         supabase.from("profiles").select("*").order("created_at", { ascending: false }),
         supabase.from("recipes").select("*, profiles!recipes_author_id_fkey(display_name)").order("created_at", { ascending: false }),
         supabase.from("comments").select("*, profiles!comments_user_id_fkey(display_name), recipes(title)").order("created_at", { ascending: false }).limit(20),
         supabase.from("user_roles").select("*"),
+        supabase.from("role_applications").select("*, profiles!role_applications_user_id_fkey(display_name, username, avatar_url)").order("created_at", { ascending: false }),
       ]);
       const rolesByUser = new Map<string, string[]>();
       (rolesRes.data ?? []).forEach((r: any) => {
@@ -42,8 +43,31 @@ function Admin() {
         profiles: (profilesRes.data ?? []).map((p) => ({ ...p, roles: rolesByUser.get(p.id) ?? [] })),
         recipes: recipesRes.data ?? [],
         comments: commentsRes.data ?? [],
+        applications: appsRes.data ?? [],
       };
     },
+  });
+
+  const reviewApp = useMutation({
+    mutationFn: async ({ id, userId, role, approve, note }: { id: string; userId: string; role: string; approve: boolean; note?: string }) => {
+      const { error: uerr } = await supabase
+        .from("role_applications")
+        .update({ status: approve ? "approved" : "rejected", review_notes: note ?? null, reviewed_at: new Date().toISOString() })
+        .eq("id", id);
+      if (uerr) throw uerr;
+      if (approve) {
+        // grant role (upsert avoids duplicate errors)
+        const { error: rerr } = await supabase
+          .from("user_roles")
+          .upsert({ user_id: userId, role: role as any }, { onConflict: "user_id,role" });
+        if (rerr) throw rerr;
+      }
+    },
+    onSuccess: (_d, v) => {
+      toast.success(v.approve ? "Application approved" : "Application rejected");
+      qc.invalidateQueries();
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const deleteRecipe = useMutation({
@@ -188,9 +212,81 @@ function Admin() {
         </div>
       </div>
 
+      <div className="mt-10 rounded-2xl border bg-card">
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <h2 className="font-display text-xl font-semibold">Role applications</h2>
+          <Badge variant="secondary">
+            {(data?.applications ?? []).filter((a: any) => a.status === "pending").length} pending
+          </Badge>
+        </div>
+        {(data?.applications ?? []).length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">No applications yet.</p>
+        ) : (
+          <ul className="divide-y">
+            {(data?.applications ?? []).map((a: any) => (
+              <li key={a.id} className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                      {a.profiles?.display_name ?? "user"} → wants to become{" "}
+                      <span className="capitalize">{a.requested_role === "homecook" ? "home cook" : a.requested_role}</span>
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Submitted {formatDistanceToNow(new Date(a.created_at))} ago
+                    </p>
+                    {a.note && (
+                      <pre className="mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-lg bg-muted/60 p-3 text-xs">
+                        {a.note}
+                      </pre>
+                    )}
+                    {a.evidence_url && (
+                      <p className="mt-2 text-xs">
+                        Evidence file:{" "}
+                        <code className="rounded bg-muted px-1.5 py-0.5">{a.evidence_url}</code>
+                        <span className="ml-1 text-muted-foreground">(role-evidence bucket)</span>
+                      </p>
+                    )}
+                  </div>
+                  <Badge
+                    variant={
+                      a.status === "approved" ? "default" : a.status === "rejected" ? "destructive" : "secondary"
+                    }
+                    className="capitalize"
+                  >
+                    {a.status}
+                  </Badge>
+                </div>
+                {a.status === "pending" && (
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        reviewApp.mutate({ id: a.id, userId: a.user_id, role: a.requested_role, approve: true })
+                      }
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const note = window.prompt("Reason for rejection (optional):") ?? undefined;
+                        reviewApp.mutate({ id: a.id, userId: a.user_id, role: a.requested_role, approve: false, note });
+                      }}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="mt-6 flex items-center gap-2 rounded-2xl border border-dashed p-4 text-sm text-muted-foreground">
         <CheckCircle2 className="h-4 w-4 text-primary" />
-        Role changes are managed at the database level for security. Contact support to promote users.
+        Approving a role grants the user contributor access instantly.
       </div>
     </DashboardLayout>
   );

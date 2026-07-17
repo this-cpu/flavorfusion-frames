@@ -9,12 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 
-type Search = { q?: string; category?: string };
+import { MEAL_TYPES, type MealType } from "@/lib/types";
+
+type Search = { q?: string; category?: string; meal?: MealType };
 
 export const Route = createFileRoute("/recipes/")({
   validateSearch: (s: Record<string, unknown>): Search => ({
     q: typeof s.q === "string" ? s.q : undefined,
     category: typeof s.category === "string" ? s.category : undefined,
+    meal: MEAL_TYPES.some((m) => m.slug === s.meal) ? (s.meal as MealType) : undefined,
   }),
   component: RecipeListing,
 });
@@ -24,6 +27,7 @@ function RecipeListing() {
   const navigate = Route.useNavigate();
   const [q, setQ] = useState(search.q ?? "");
   const activeSlug = search.category ?? "all";
+  const activeMeal = search.meal ?? "all";
 
   const { data: categories = [] } = useQuery({
     queryKey: ["categories"],
@@ -31,14 +35,15 @@ function RecipeListing() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["recipes-list", search.q, search.category],
+    queryKey: ["recipes-list", search.q, search.category, search.meal],
     queryFn: async () => {
       let query = supabase
         .from("recipes")
-        .select("id, title, description, image_url, difficulty, prep_time_min, cook_time_min, category_id, categories(name, slug)")
+        .select("id, title, description, image_url, difficulty, prep_time_min, cook_time_min, category_id, meal_type, categories(name, slug)")
         .eq("is_published", true)
         .order("created_at", { ascending: false });
       if (search.q) query = query.ilike("title", `%${search.q}%`);
+      if (search.meal) query = query.eq("meal_type", search.meal);
       if (search.category && search.category !== "all") {
         const cat = (await supabase.from("categories").select("id").eq("slug", search.category).maybeSingle()).data;
         if (cat) query = query.eq("category_id", cat.id);
@@ -63,6 +68,9 @@ function RecipeListing() {
   const setCategory = (slug: string) => {
     navigate({ search: (s: Search) => ({ ...s, category: slug === "all" ? undefined : slug }) });
   };
+  const setMeal = (slug: string) => {
+    navigate({ search: (s: Search) => ({ ...s, meal: slug === "all" ? undefined : (slug as MealType) }) });
+  };
 
   return (
     <SiteLayout>
@@ -86,20 +94,39 @@ function RecipeListing() {
             <Button type="submit" className="h-11">Search</Button>
           </form>
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            {[{ slug: "all", name: "All" }, ...categories].map((c) => (
-              <Badge
-                key={c.slug}
-                onClick={() => setCategory(c.slug)}
-                className={`cursor-pointer rounded-full border px-3 py-1 text-sm transition-colors ${
-                  activeSlug === c.slug
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-foreground hover:bg-accent"
-                }`}
-              >
-                {c.name}
-              </Badge>
-            ))}
+          <div className="mt-5 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">Meal</span>
+              {[{ slug: "all", label: "All" }, ...MEAL_TYPES.map((m) => ({ slug: m.slug, label: m.label }))].map((m) => (
+                <Badge
+                  key={m.slug}
+                  onClick={() => setMeal(m.slug)}
+                  className={`cursor-pointer rounded-full border px-3 py-1 text-sm transition-colors ${
+                    activeMeal === m.slug
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:bg-accent"
+                  }`}
+                >
+                  {m.label}
+                </Badge>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">Cuisine</span>
+              {[{ slug: "all", name: "All" }, ...categories].map((c) => (
+                <Badge
+                  key={c.slug}
+                  onClick={() => setCategory(c.slug)}
+                  className={`cursor-pointer rounded-full border px-3 py-1 text-sm transition-colors ${
+                    activeSlug === c.slug
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground hover:bg-accent"
+                  }`}
+                >
+                  {c.name}
+                </Badge>
+              ))}
+            </div>
           </div>
         </div>
       </section>

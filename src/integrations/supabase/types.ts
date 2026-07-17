@@ -126,6 +126,41 @@ export type Database = {
         }
         Relationships: []
       }
+      ratings: {
+        Row: {
+          created_at: string
+          id: string
+          recipe_id: string
+          stars: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipe_id: string
+          stars: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipe_id?: string
+          stars?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           author_id: string
@@ -142,6 +177,7 @@ export type Database = {
           image_url: string | null
           ingredients: Json
           is_published: boolean
+          meal_type: Database["public"]["Enums"]["meal_type"] | null
           prep_time_min: number | null
           protein_g: number | null
           servings: number | null
@@ -167,6 +203,7 @@ export type Database = {
           image_url?: string | null
           ingredients?: Json
           is_published?: boolean
+          meal_type?: Database["public"]["Enums"]["meal_type"] | null
           prep_time_min?: number | null
           protein_g?: number | null
           servings?: number | null
@@ -192,6 +229,7 @@ export type Database = {
           image_url?: string | null
           ingredients?: Json
           is_published?: boolean
+          meal_type?: Database["public"]["Enums"]["meal_type"] | null
           prep_time_min?: number | null
           protein_g?: number | null
           servings?: number | null
@@ -211,6 +249,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      role_applications: {
+        Row: {
+          created_at: string
+          evidence_url: string | null
+          id: string
+          note: string | null
+          requested_role: Database["public"]["Enums"]["app_role"]
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewer_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          evidence_url?: string | null
+          id?: string
+          note?: string | null
+          requested_role: Database["public"]["Enums"]["app_role"]
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          evidence_url?: string | null
+          id?: string
+          note?: string | null
+          requested_role?: Database["public"]["Enums"]["app_role"]
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewer_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -247,7 +327,14 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "chef" | "homecook"
+      app_role: "admin" | "chef" | "homecook" | "user"
+      meal_type:
+        | "breakfast"
+        | "lunch"
+        | "dinner"
+        | "dessert"
+        | "snack"
+        | "drink"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -375,7 +462,8 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "chef", "homecook"],
+      app_role: ["admin", "chef", "homecook", "user"],
+      meal_type: ["breakfast", "lunch", "dinner", "dessert", "snack", "drink"],
     },
   },
 } as const
