@@ -5,10 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useShoppingList } from "@/lib/shopping-list";
 import { toast } from "sonner";
+import { useMemo } from "react";
+import { parseIngredientLine, sumNutrition, round } from "@/lib/ingredients";
+import { NutritionCard } from "@/components/NutritionBreakdown";
 
 export const Route = createFileRoute("/_authenticated/shopping-list")({
   component: ShoppingListPage,
 });
+
 
 function ShoppingListPage() {
   const { items, toggle, remove, clear, clearChecked } = useShoppingList();
