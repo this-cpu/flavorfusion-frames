@@ -20,10 +20,10 @@ function Dashboard() {
     queryKey: ["dashboard", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const [myRecipesRes, myLikesRes, myCommentsRes, allRecipesForAdminRes] = await Promise.all([
+      const [myRecipesRes, myCommentsRes, myLikesRes, allRecipesForAdminRes] = await Promise.all([
         supabase.from("recipes").select("*").eq("author_id", user!.id).order("created_at", { ascending: false }),
-        supabase.from("likes").select("recipe_id, recipes(author_id)").eq("recipes.author_id" as any, user!.id),
         supabase.from("comments").select("id, body, created_at, recipe_id, recipes(title, author_id)").order("created_at", { ascending: false }).limit(10),
+        supabase.from("likes").select("recipe_id, created_at").eq("user_id", user!.id).order("created_at", { ascending: false }),
         isAdmin ? supabase.from("recipes").select("*", { count: "exact", head: true }) : Promise.resolve({ count: 0 } as any),
       ]);
 
@@ -37,14 +37,27 @@ function Dashboard() {
         (c: any) => c.recipes?.author_id === user!.id,
       );
 
+      const likedIds = (myLikesRes.data ?? []).map((l: any) => l.recipe_id);
+      const likedRecipes = likedIds.length
+        ? ((await supabase
+            .from("recipes")
+            .select("id, title, image_url, difficulty, created_at")
+            .in("id", likedIds)).data ?? [])
+        : [];
+      // preserve like order
+      const orderMap = new Map(likedIds.map((id, i) => [id, i]));
+      likedRecipes.sort((a: any, b: any) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
+
       return {
         myRecipes: myRecipesRes.data ?? [],
         likesOnMineCount: likesOnMine?.length ?? 0,
         commentsOnMine,
+        likedRecipes,
         totalRecipesGlobal: (allRecipesForAdminRes as any).count ?? 0,
       };
     },
   });
+
 
   const stats = [
     { label: "Your recipes", value: `${data?.myRecipes.length ?? 0}`, icon: BookOpen },
