@@ -188,7 +188,11 @@ function RecipeDetails() {
   const scale = servings / baseServings;
 
   const nutritionRows: NutritionKey[] = ["calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g", "sodium_mg"];
-  const hasAnyNutrition = nutritionRows.some((k) => (recipe as any)[k] != null);
+  const parsedIngredients = ingredients.map((i) => parseIngredientLine(i)).filter((p) => p.raw.trim().length > 0);
+  const computedTotal = sumNutrition(parsedIngredients.map((p) => p.nutrition));
+  const hasComputed = parsedIngredients.some((p) => !!p.match);
+  const hasAnyNutrition = nutritionRows.some((k) => (recipe as any)[k] != null) || hasComputed;
+
 
   const handleAddToList = () => {
     const n = addToShoppingList(ingredients, { recipe_id: recipe.id, recipe_title: recipe.title });
