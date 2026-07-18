@@ -45,8 +45,8 @@ function Home() {
   const { data, isLoading } = useHomeData();
   const recipes = data?.recipes ?? [];
   const categories = data?.categories ?? [];
-  const hero = recipes[0];
   const slides = recipes.slice(0, 5).map((r: any) => ({
+
     id: r.id, title: r.title, description: r.description, image_url: r.image_url,
   }));
 
