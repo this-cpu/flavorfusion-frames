@@ -391,6 +391,15 @@ function RecipeDetails() {
                         })}
                       </div>
                     </div>
+
+                    <div className="mt-6">
+                      <h4 className="mb-2 text-sm font-semibold">How this was calculated</h4>
+                      <p className="mb-3 text-xs text-muted-foreground">
+                        Each ingredient line is parsed for quantity + unit, converted to grams using density/piece weight, then matched to our local nutrition database (USDA-style per-100g values). Matched rows are summed for the whole recipe and divided by servings. Unmatched lines are ignored — the chef's stored values are used as a fallback.
+                      </p>
+                      <IngredientBreakdownList parsed={parsedIngredients} />
+                    </div>
+
                   </>
                 )}
               </div>
