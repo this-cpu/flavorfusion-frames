@@ -340,10 +340,18 @@ function RecipeDetails() {
                   <>
                     <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {nutritionRows.map((k) => {
-                        const raw = (recipe as any)[k] as number | null;
-                        if (raw == null) return null;
-                        const scaled = Math.round(raw * scale * 100) / 100;
-                        const total = Math.round(raw * servings * 100) / 100;
+                        const stored = (recipe as any)[k] as number | null;
+                        const perServing = stored != null
+                          ? stored
+                          : (recipe.servings ? (computedTotal[k] / recipe.servings) : computedTotal[k]);
+                        if (!perServing && perServing !== 0) return null;
+                        const scaled = round(perServing * scale);
+                        const total = round(perServing * servings);
+                        const source = stored != null ? "stored" : "computed";
+                        return (
+                          <div key={k} className="rounded-xl bg-muted/60 p-4">
+                            <p className="text-xs uppercase tracking-wide text-muted-foreground">
+
                         return (
                           <div key={k} className="rounded-xl bg-muted/60 p-4">
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">
