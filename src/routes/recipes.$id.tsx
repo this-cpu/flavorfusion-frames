@@ -14,7 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PLACEHOLDER_IMG, totalTime, NUTRITION_LABELS, type NutritionKey } from "@/lib/types";
 import { addToShoppingList } from "@/lib/shopping-list";
+import { parseIngredientLine, sumNutrition, round } from "@/lib/ingredients";
+import { IngredientBreakdownList } from "@/components/NutritionBreakdown";
 import { formatDistanceToNow } from "date-fns";
+
 
 export const Route = createFileRoute("/recipes/$id")({
   component: RecipeDetails,
