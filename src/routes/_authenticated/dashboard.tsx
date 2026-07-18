@@ -182,6 +182,37 @@ function Dashboard() {
           </ul>
         </div>
       </div>
+
+      <div className="mt-10 rounded-2xl border bg-card">
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <div className="flex items-center gap-2">
+            <Heart className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-xl font-semibold">Liked & saved recipes</h2>
+          </div>
+          <Link to="/recipes" className="text-sm text-primary hover:underline">Find more</Link>
+        </div>
+        {(data?.likedRecipes ?? []).length === 0 ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            You haven't liked any recipes yet. Tap the heart on a recipe to save it here.
+          </div>
+        ) : (
+          <ul className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(data?.likedRecipes ?? []).map((r: any) => (
+              <li key={r.id}>
+                <Link to="/recipes/$id" params={{ id: r.id }} className="group flex items-center gap-3 rounded-xl border p-3 transition-all hover:-translate-y-0.5 hover:shadow-warm">
+                  <img src={r.image_url || PLACEHOLDER_IMG} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium group-hover:text-primary">{r.title}</p>
+                    <p className="text-xs text-muted-foreground">{r.difficulty ?? "Easy"}</p>
+                  </div>
+                  <Heart className="h-4 w-4 fill-primary text-primary" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
     </DashboardLayout>
   );
 }
