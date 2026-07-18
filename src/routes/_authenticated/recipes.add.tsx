@@ -263,11 +263,15 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
             </div>
           </div>
 
+          <NutritionCard total={totalNutrition} servings={servings} title="Live nutrition" />
+          <IngredientBreakdownList parsed={parsedIngredients} />
+
           <Button className="w-full rounded-full" size="lg" onClick={() => save.mutate()} disabled={save.isPending}>
             {save.isPending ? "Saving..." : isEdit ? "Update recipe" : "Publish recipe"}
           </Button>
         </aside>
       </div>
     </DashboardLayout>
+
   );
 }
