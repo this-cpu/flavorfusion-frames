@@ -4,9 +4,10 @@ import { ArrowRight, ChefHat, Sparkles, Timer, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SiteLayout } from "@/components/Layouts";
 import { RecipeCard, RecipeCardSkeleton } from "@/components/RecipeCard";
+import { HeroSlideshow } from "@/components/HeroSlideshow";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { PLACEHOLDER_IMG } from "@/lib/types";
+
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -44,7 +45,10 @@ function Home() {
   const { data, isLoading } = useHomeData();
   const recipes = data?.recipes ?? [];
   const categories = data?.categories ?? [];
-  const hero = recipes[0];
+  const slides = recipes.slice(0, 5).map((r: any) => ({
+
+    id: r.id, title: r.title, description: r.description, image_url: r.image_url,
+  }));
 
   return (
     <SiteLayout>
@@ -76,21 +80,7 @@ function Home() {
           </div>
 
           <div className="relative">
-            <div className="absolute -right-8 -top-8 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
-            <div className="glass-strong relative overflow-hidden rounded-3xl shadow-warm">
-              <img
-                src={hero?.image_url || PLACEHOLDER_IMG}
-                alt={hero?.title ?? "Featured recipe"}
-                className="aspect-[4/5] w-full object-cover"
-              />
-              <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent p-6 text-white">
-                <Badge className="mb-2 border-0 bg-white/20 text-white">Chef's pick</Badge>
-                <h3 className="font-display text-2xl">{hero?.title ?? "Discover recipes"}</h3>
-                <p className="mt-1 text-sm opacity-90">
-                  {hero?.description ?? "Sign up and add the first recipe to our community."}
-                </p>
-              </div>
-            </div>
+            <HeroSlideshow slides={slides} />
             <div className="glass absolute -bottom-6 -left-6 hidden rounded-2xl px-4 py-3 shadow-soft sm:block">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/10 text-primary">
@@ -105,6 +95,7 @@ function Home() {
           </div>
         </div>
       </section>
+
 
       <section className="mx-auto max-w-7xl px-4 pt-8 sm:px-6">
         <div className="flex items-end justify-between">

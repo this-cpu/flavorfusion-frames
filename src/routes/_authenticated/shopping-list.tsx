@@ -5,10 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useShoppingList } from "@/lib/shopping-list";
 import { toast } from "sonner";
+import { useMemo } from "react";
+import { parseIngredientLine, sumNutrition, round } from "@/lib/ingredients";
+import { NutritionCard } from "@/components/NutritionBreakdown";
 
 export const Route = createFileRoute("/_authenticated/shopping-list")({
   component: ShoppingListPage,
 });
+
 
 function ShoppingListPage() {
   const { items, toggle, remove, clear, clearChecked } = useShoppingList();
@@ -34,6 +38,11 @@ function ShoppingListPage() {
     if (!groups.has(k)) groups.set(k, []);
     groups.get(k)!.push(i);
   });
+
+  const parsedAll = useMemo(() => items.map((i) => ({ item: i, parsed: parseIngredientLine(i.text) })), [items]);
+  const totalNutrition = useMemo(() => sumNutrition(parsedAll.map((p) => p.parsed.nutrition)), [parsedAll]);
+  const parsedByItemId = new Map(parsedAll.map((p) => [p.item.id, p.parsed]));
+
 
   return (
     <DashboardLayout>
@@ -69,27 +78,44 @@ function ShoppingListPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-8 space-y-6 print:mt-4">
-          {Array.from(groups.entries()).map(([title, list]) => (
-            <div key={title} className="rounded-2xl border bg-card p-6">
-              <h2 className="font-display text-lg font-semibold">{title}</h2>
-              <ul className="mt-4 space-y-2">
-                {list.map((i) => (
-                  <li key={i.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-accent/40">
-                    <Checkbox checked={i.checked} onCheckedChange={() => toggle(i.id)} />
-                    <span className={`flex-1 text-sm ${i.checked ? "text-muted-foreground line-through" : ""}`}>
-                      {i.text}
-                    </span>
-                    <Button variant="ghost" size="icon" onClick={() => remove(i.id)} className="print:hidden">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_320px] print:mt-4 print:block">
+          <div className="space-y-6">
+            {Array.from(groups.entries()).map(([title, list]) => (
+              <div key={title} className="rounded-2xl border bg-card p-6">
+                <h2 className="font-display text-lg font-semibold">{title}</h2>
+                <ul className="mt-4 space-y-2">
+                  {list.map((i) => {
+                    const p = parsedByItemId.get(i.id);
+                    return (
+                      <li key={i.id} className="flex items-start gap-3 rounded-lg px-2 py-1.5 hover:bg-accent/40">
+                        <Checkbox checked={i.checked} onCheckedChange={() => toggle(i.id)} className="mt-1" />
+                        <div className={`flex-1 text-sm ${i.checked ? "text-muted-foreground line-through" : ""}`}>
+                          <div>{i.text}</div>
+                          {p?.match && p.nutrition && (
+                            <div className="text-[11px] text-muted-foreground">
+                              ≈ {p.grams ? round(p.grams) : "?"} g · {round(p.nutrition.calories)} kcal · P {round(p.nutrition.protein_g)}g · C {round(p.nutrition.carbs_g)}g · F {round(p.nutrition.fat_g)}g
+                            </div>
+                          )}
+                        </div>
+                        <Button variant="ghost" size="icon" onClick={() => remove(i.id)} className="print:hidden">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <aside className="print:hidden">
+            <NutritionCard total={totalNutrition} title="Cart nutrition (total)" />
+            <p className="mt-3 text-xs text-muted-foreground">
+              Computed by matching each line to our ingredient database and summing per-100g values by weight.
+            </p>
+          </aside>
         </div>
       )}
     </DashboardLayout>
   );
 }
+

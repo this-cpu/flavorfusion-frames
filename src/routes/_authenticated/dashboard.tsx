@@ -20,10 +20,10 @@ function Dashboard() {
     queryKey: ["dashboard", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const [myRecipesRes, myLikesRes, myCommentsRes, allRecipesForAdminRes] = await Promise.all([
+      const [myRecipesRes, myCommentsRes, myLikesRes, allRecipesForAdminRes] = await Promise.all([
         supabase.from("recipes").select("*").eq("author_id", user!.id).order("created_at", { ascending: false }),
-        supabase.from("likes").select("recipe_id, recipes(author_id)").eq("recipes.author_id" as any, user!.id),
         supabase.from("comments").select("id, body, created_at, recipe_id, recipes(title, author_id)").order("created_at", { ascending: false }).limit(10),
+        supabase.from("likes").select("recipe_id, created_at").eq("user_id", user!.id).order("created_at", { ascending: false }),
         isAdmin ? supabase.from("recipes").select("*", { count: "exact", head: true }) : Promise.resolve({ count: 0 } as any),
       ]);
 
@@ -37,14 +37,27 @@ function Dashboard() {
         (c: any) => c.recipes?.author_id === user!.id,
       );
 
+      const likedIds = (myLikesRes.data ?? []).map((l: any) => l.recipe_id);
+      const likedRecipes = likedIds.length
+        ? ((await supabase
+            .from("recipes")
+            .select("id, title, image_url, difficulty, created_at")
+            .in("id", likedIds)).data ?? [])
+        : [];
+      // preserve like order
+      const orderMap = new Map(likedIds.map((id, i) => [id, i]));
+      likedRecipes.sort((a: any, b: any) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
+
       return {
         myRecipes: myRecipesRes.data ?? [],
         likesOnMineCount: likesOnMine?.length ?? 0,
         commentsOnMine,
+        likedRecipes,
         totalRecipesGlobal: (allRecipesForAdminRes as any).count ?? 0,
       };
     },
   });
+
 
   const stats = [
     { label: "Your recipes", value: `${data?.myRecipes.length ?? 0}`, icon: BookOpen },
@@ -169,6 +182,37 @@ function Dashboard() {
           </ul>
         </div>
       </div>
+
+      <div className="mt-10 rounded-2xl border bg-card">
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <div className="flex items-center gap-2">
+            <Heart className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-xl font-semibold">Liked & saved recipes</h2>
+          </div>
+          <Link to="/recipes" className="text-sm text-primary hover:underline">Find more</Link>
+        </div>
+        {(data?.likedRecipes ?? []).length === 0 ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            You haven't liked any recipes yet. Tap the heart on a recipe to save it here.
+          </div>
+        ) : (
+          <ul className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(data?.likedRecipes ?? []).map((r: any) => (
+              <li key={r.id}>
+                <Link to="/recipes/$id" params={{ id: r.id }} className="group flex items-center gap-3 rounded-xl border p-3 transition-all hover:-translate-y-0.5 hover:shadow-warm">
+                  <img src={r.image_url || PLACEHOLDER_IMG} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium group-hover:text-primary">{r.title}</p>
+                    <p className="text-xs text-muted-foreground">{r.difficulty ?? "Easy"}</p>
+                  </div>
+                  <Heart className="h-4 w-4 fill-primary text-primary" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
     </DashboardLayout>
   );
 }

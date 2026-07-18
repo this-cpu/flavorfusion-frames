@@ -14,7 +14,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { PLACEHOLDER_IMG, totalTime, NUTRITION_LABELS, type NutritionKey } from "@/lib/types";
 import { addToShoppingList } from "@/lib/shopping-list";
+import { parseIngredientLine, sumNutrition, round } from "@/lib/ingredients";
+import { IngredientBreakdownList } from "@/components/NutritionBreakdown";
 import { formatDistanceToNow } from "date-fns";
+
 
 export const Route = createFileRoute("/recipes/$id")({
   component: RecipeDetails,
@@ -185,7 +188,11 @@ function RecipeDetails() {
   const scale = servings / baseServings;
 
   const nutritionRows: NutritionKey[] = ["calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g", "sodium_mg"];
-  const hasAnyNutrition = nutritionRows.some((k) => (recipe as any)[k] != null);
+  const parsedIngredients = ingredients.map((i) => parseIngredientLine(i)).filter((p) => p.raw.trim().length > 0);
+  const computedTotal = sumNutrition(parsedIngredients.map((p) => p.nutrition));
+  const hasComputed = parsedIngredients.some((p) => !!p.match);
+  const hasAnyNutrition = nutritionRows.some((k) => (recipe as any)[k] != null) || hasComputed;
+
 
   const handleAddToList = () => {
     const n = addToShoppingList(ingredients, { recipe_id: recipe.id, recipe_title: recipe.title });
@@ -333,10 +340,14 @@ function RecipeDetails() {
                   <>
                     <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {nutritionRows.map((k) => {
-                        const raw = (recipe as any)[k] as number | null;
-                        if (raw == null) return null;
-                        const scaled = Math.round(raw * scale * 100) / 100;
-                        const total = Math.round(raw * servings * 100) / 100;
+                        const stored = (recipe as any)[k] as number | null;
+                        const perServing = stored != null
+                          ? stored
+                          : (recipe.servings ? (computedTotal[k] / recipe.servings) : computedTotal[k]);
+                        if (!perServing && perServing !== 0) return null;
+                        const scaled = round(perServing * scale);
+                        const total = round(perServing * servings);
+                        const source = stored != null ? "stored" : "computed";
                         return (
                           <div key={k} className="rounded-xl bg-muted/60 p-4">
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -348,10 +359,11 @@ function RecipeDetails() {
                                 {NUTRITION_LABELS[k].unit}
                               </span>
                             </p>
-                            <p className="text-[10px] text-muted-foreground">per serving · {total} total</p>
+                            <p className="text-[10px] text-muted-foreground">per serving · {total} total · {source}</p>
                           </div>
                         );
                       })}
+
                     </div>
 
                     <div className="mt-6 rounded-xl border border-dashed p-4 text-xs text-muted-foreground">
@@ -379,6 +391,15 @@ function RecipeDetails() {
                         })}
                       </div>
                     </div>
+
+                    <div className="mt-6">
+                      <h4 className="mb-2 text-sm font-semibold">How this was calculated</h4>
+                      <p className="mb-3 text-xs text-muted-foreground">
+                        Each ingredient line is parsed for quantity + unit, converted to grams using density/piece weight, then matched to our local nutrition database (USDA-style per-100g values). Matched rows are summed for the whole recipe and divided by servings. Unmatched lines are ignored — the chef's stored values are used as a fallback.
+                      </p>
+                      <IngredientBreakdownList parsed={parsedIngredients} />
+                    </div>
+
                   </>
                 )}
               </div>

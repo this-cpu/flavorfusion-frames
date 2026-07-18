@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/Layouts";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { DbCategory } from "@/lib/types";
+import { IngredientInput } from "@/components/IngredientInput";
+import { NutritionCard, IngredientBreakdownList } from "@/components/NutritionBreakdown";
+import { parseIngredientLine, sumNutrition } from "@/lib/ingredients";
+
 
 export const Route = createFileRoute("/_authenticated/recipes/add")({
   component: AddRecipe,
@@ -51,6 +55,16 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
   const [tags, setTags] = useState("");
   const [loaded, setLoaded] = useState(false);
 
+  const parsedIngredients = useMemo(
+    () => ingredients.map((i) => parseIngredientLine(i)).filter((p) => p.raw.trim().length > 0),
+    [ingredients],
+  );
+  const totalNutrition = useMemo(
+    () => sumNutrition(parsedIngredients.map((p) => p.nutrition)),
+    [parsedIngredients],
+  );
+
+
   if (existing && !loaded) {
     setTitle(existing.title);
     setDescription(existing.description ?? "");
@@ -72,6 +86,10 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
   const save = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Not signed in");
+      const cleanIng = ingredients.map((i) => i.trim()).filter(Boolean);
+      const parsedAll = cleanIng.map(parseIngredientLine);
+      const totalN = sumNutrition(parsedAll.map((p) => p.nutrition));
+      const perServing = (v: number) => servings > 0 ? Math.round(v / servings) : Math.round(v);
       const payload = {
         author_id: user.id,
         title: title.trim(),
@@ -82,12 +100,19 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
         cook_time_min: cook,
         servings,
         difficulty,
-        calories: calories === "" ? null : Number(calories),
-        ingredients: ingredients.map((i) => i.trim()).filter(Boolean),
+        calories: calories === "" ? (totalN.calories ? perServing(totalN.calories) : null) : Number(calories),
+        protein_g: totalN.protein_g ? perServing(totalN.protein_g) : null,
+        carbs_g: totalN.carbs_g ? perServing(totalN.carbs_g) : null,
+        fat_g: totalN.fat_g ? perServing(totalN.fat_g) : null,
+        fiber_g: totalN.fiber_g ? perServing(totalN.fiber_g) : null,
+        sugar_g: totalN.sugar_g ? perServing(totalN.sugar_g) : null,
+        sodium_mg: totalN.sodium_mg ? perServing(totalN.sodium_mg) : null,
+        ingredients: cleanIng,
         steps: steps.map((s) => s.trim()).filter(Boolean),
         tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
         is_published: true,
       };
+
       if (!payload.title) throw new Error("Title is required");
       if (isEdit) {
         const { error } = await supabase.from("recipes").update(payload).eq("id", recipeId!);
@@ -138,12 +163,20 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
                 <Plus className="mr-1 h-4 w-4" /> Add
               </Button>
             </div>
-            <div className="mt-4 space-y-2">
+            <p className="mt-1 text-xs text-muted-foreground">
+              Type quantity + unit + ingredient (e.g. <em>"2 cups flour"</em>). We suggest matches and compute nutrition live.
+            </p>
+            <div className="mt-4 space-y-3">
               {ingredients.map((ing, i) => (
-                <div key={i} className="flex gap-2">
-                  <Input value={ing} onChange={(e) => {
-                    const copy = [...ingredients]; copy[i] = e.target.value; setIngredients(copy);
-                  }} placeholder={`Ingredient ${i + 1}`} />
+                <div key={i} className="flex items-start gap-2">
+                  <GripVertical className="mt-2.5 h-4 w-4 shrink-0 text-muted-foreground/50" />
+                  <IngredientInput
+                    value={ing}
+                    onChange={(v) => {
+                      const copy = [...ingredients]; copy[i] = v; setIngredients(copy);
+                    }}
+                    placeholder={`Ingredient ${i + 1}`}
+                  />
                   <Button variant="ghost" size="icon" onClick={() => setIngredients(ingredients.filter((_, k) => k !== i))}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -162,6 +195,7 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
             <div className="mt-4 space-y-2">
               {steps.map((s, i) => (
                 <div key={i} className="flex gap-2">
+
                   <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground text-sm">
                     {i + 1}
                   </div>
@@ -215,15 +249,22 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
                 <Input id="sv" type="number" value={servings} onChange={(e) => setServings(Number(e.target.value))} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cal">Calories</Label>
-                <Input id="cal" type="number" value={calories} onChange={(e) => setCalories(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Label htmlFor="cal">Calories (override)</Label>
+                <Input id="cal" type="number" value={calories} onChange={(e) => setCalories(e.target.value === "" ? "" : Number(e.target.value))} placeholder="auto" />
               </div>
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              Leave calories empty to auto-compute from your ingredients.
+            </p>
+
             <div className="space-y-2">
               <Label htmlFor="tg">Tags (comma-separated)</Label>
               <Input id="tg" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="quick, dinner, spicy" />
             </div>
           </div>
+
+          <NutritionCard total={totalNutrition} servings={servings} title="Live nutrition" />
+          <IngredientBreakdownList parsed={parsedIngredients} />
 
           <Button className="w-full rounded-full" size="lg" onClick={() => save.mutate()} disabled={save.isPending}>
             {save.isPending ? "Saving..." : isEdit ? "Update recipe" : "Publish recipe"}
@@ -231,5 +272,6 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
         </aside>
       </div>
     </DashboardLayout>
+
   );
 }
