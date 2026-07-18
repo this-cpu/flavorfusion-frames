@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Plus, Trash2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { DashboardLayout } from "@/components/Layouts";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { DbCategory } from "@/lib/types";
+import { IngredientInput } from "@/components/IngredientInput";
+import { NutritionCard, IngredientBreakdownList } from "@/components/NutritionBreakdown";
+import { parseIngredientLine, sumNutrition } from "@/lib/ingredients";
+
 
 export const Route = createFileRoute("/_authenticated/recipes/add")({
   component: AddRecipe,
