@@ -351,10 +351,6 @@ function RecipeDetails() {
                         return (
                           <div key={k} className="rounded-xl bg-muted/60 p-4">
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">
-
-                        return (
-                          <div key={k} className="rounded-xl bg-muted/60 p-4">
-                            <p className="text-xs uppercase tracking-wide text-muted-foreground">
                               {NUTRITION_LABELS[k].label}
                             </p>
                             <p className="mt-1 font-display text-2xl font-semibold">
@@ -363,10 +359,11 @@ function RecipeDetails() {
                                 {NUTRITION_LABELS[k].unit}
                               </span>
                             </p>
-                            <p className="text-[10px] text-muted-foreground">per serving · {total} total</p>
+                            <p className="text-[10px] text-muted-foreground">per serving · {total} total · {source}</p>
                           </div>
                         );
                       })}
+
                     </div>
 
                     <div className="mt-6 rounded-xl border border-dashed p-4 text-xs text-muted-foreground">
