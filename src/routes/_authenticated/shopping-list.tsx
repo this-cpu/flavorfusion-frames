@@ -39,6 +39,11 @@ function ShoppingListPage() {
     groups.get(k)!.push(i);
   });
 
+  const parsedAll = useMemo(() => items.map((i) => ({ item: i, parsed: parseIngredientLine(i.text) })), [items]);
+  const totalNutrition = useMemo(() => sumNutrition(parsedAll.map((p) => p.parsed.nutrition)), [parsedAll]);
+  const parsedByItemId = new Map(parsedAll.map((p) => [p.item.id, p.parsed]));
+
+
   return (
     <DashboardLayout>
       <div className="flex flex-wrap items-center justify-between gap-4">
