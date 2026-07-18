@@ -249,10 +249,14 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
                 <Input id="sv" type="number" value={servings} onChange={(e) => setServings(Number(e.target.value))} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="cal">Calories</Label>
-                <Input id="cal" type="number" value={calories} onChange={(e) => setCalories(e.target.value === "" ? "" : Number(e.target.value))} />
+                <Label htmlFor="cal">Calories (override)</Label>
+                <Input id="cal" type="number" value={calories} onChange={(e) => setCalories(e.target.value === "" ? "" : Number(e.target.value))} placeholder="auto" />
               </div>
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              Leave calories empty to auto-compute from your ingredients.
+            </p>
+
             <div className="space-y-2">
               <Label htmlFor="tg">Tags (comma-separated)</Label>
               <Input id="tg" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="quick, dinner, spicy" />
