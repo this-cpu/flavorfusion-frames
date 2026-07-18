@@ -55,6 +55,16 @@ export function RecipeForm({ recipeId }: { recipeId?: string } = {}) {
   const [tags, setTags] = useState("");
   const [loaded, setLoaded] = useState(false);
 
+  const parsedIngredients = useMemo(
+    () => ingredients.map((i) => parseIngredientLine(i)).filter((p) => p.raw.trim().length > 0),
+    [ingredients],
+  );
+  const totalNutrition = useMemo(
+    () => sumNutrition(parsedIngredients.map((p) => p.nutrition)),
+    [parsedIngredients],
+  );
+
+
   if (existing && !loaded) {
     setTitle(existing.title);
     setDescription(existing.description ?? "");
