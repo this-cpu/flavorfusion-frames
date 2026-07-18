@@ -33,12 +33,18 @@ function Categories() {
         }
       });
 
+      const mealNameSet = new Set(MEAL_TYPES.map((m) => m.label.toLowerCase()));
+      // Also filter out plurals like "drinks" vs "drink"
+      MEAL_TYPES.forEach((m) => mealNameSet.add(m.label.toLowerCase() + "s"));
+
       return {
-        cuisines: (cats ?? []).map((c) => ({
-          ...c,
-          count: catCounts.get(c.id) ?? 0,
-          cover: catCovers.get(c.id) ?? PLACEHOLDER_IMG,
-        })),
+        cuisines: (cats ?? [])
+          .filter((c) => !mealNameSet.has(c.name.toLowerCase()))
+          .map((c) => ({
+            ...c,
+            count: catCounts.get(c.id) ?? 0,
+            cover: catCovers.get(c.id) ?? PLACEHOLDER_IMG,
+          })),
         meals: MEAL_TYPES.map((m) => ({
           ...m,
           count: mealCounts.get(m.slug) ?? 0,
@@ -47,6 +53,7 @@ function Categories() {
       };
     },
   });
+
 
   return (
     <SiteLayout>
